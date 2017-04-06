@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import scipy.io as sio
 
 
 def getData():
@@ -43,14 +44,21 @@ def getData():
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(2000, 500)
-        self.fc2 = nn.Linear(500, 20)
+        self.fc1 = nn.Linear(2000, 209)
+        self.fc2 = nn.Linear(209, 100)
+        self.fc3 = nn.Linear(100, 20)
 
     def forward(self, x):
         x = x.view(x.size()[0], -1)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         return x
+
+    def applyMask(self, mask):
+        weight = list(self.parameters())[0].data
+        weight.mul_(mask)
+
 
 
 labelName, trainX, trainY, testX, testY = getData()
@@ -61,10 +69,13 @@ randomTestIdx = randgen.choice(7532, 1000, replace=False)
 randomTestX = torch.from_numpy(testX[randomTestIdx])
 randomTestY = torch.from_numpy(testY[randomTestIdx])
 
+mask = torch.from_numpy( sio.loadmat('mask_commonest2000_soft_cond_PEM_209hid_800.mat')['mask'].astype(np.float32).T )
+
 net = Net()
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)#0.001
+optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.9)#0.001
 
+best = 0
 for epoch in range(100):
     running_loss = 0.0
     for batch in range(batchnum):
@@ -83,6 +94,7 @@ for epoch in range(100):
         loss = criterion(output, batchY)
         loss.backward()
         optimizer.step()
+        net.applyMask(mask)############################################
 
         # print statistics
         running_loss += loss.data[0]
@@ -97,5 +109,9 @@ for epoch in range(100):
             _, predicted = torch.max(output.data, 1)
             correct = (predicted == randomTestY).sum()
 
-            print('Accuracy of the network on the 1000 test docs: %.1f %%' % (
-                100.0 * correct / 1000))
+            print('Accuracy of the network on the random test docs: %.1f %%' % (
+                100.0 * correct / predicted.size()[0]))
+
+            if 100.0 * correct / predicted.size()[0] > best:
+                best = 100.0 * correct / predicted.size()[0]
+            print('Best Accuracy: %.1f %%' % (best))
