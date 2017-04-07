@@ -44,7 +44,7 @@ def getData():
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(2000, 209)
+        self.fc1 = nn.Linear(2000, 209, bias=True)
         self.fc2 = nn.Linear(209, 100)
         self.fc3 = nn.Linear(100, 20)
 
@@ -68,6 +68,10 @@ randgen = np.random.RandomState(11)
 randomTestIdx = randgen.choice(7532, 1000, replace=False)
 randomTestX = torch.from_numpy(testX[randomTestIdx])
 randomTestY = torch.from_numpy(testY[randomTestIdx])
+randomTrainIdx = randgen.choice(11314, 1000, replace=False)
+randomTrainX = torch.from_numpy(trainX[randomTrainIdx])
+randomTrainY = torch.from_numpy(trainY[randomTrainIdx])
+
 
 mask = torch.from_numpy( sio.loadmat('mask_commonest2000_soft_cond_PEM_209hid_800.mat')['mask'].astype(np.float32).T )
 
@@ -99,8 +103,15 @@ for epoch in range(100):
         # print statistics
         running_loss += loss.data[0]
         if batch % 10 == 9:
-            print('[%d, %5d] loss: %.3f' % (epoch+1, batch+1, running_loss / 10))
+            print('[%d, %5d] training batch loss: %.3f' % (epoch+1, batch+1, running_loss / 10))
             running_loss = 0.0
+
+            output = net(Variable(randomTrainX))
+            _, predicted = torch.max(output.data, 1)
+            correct = (predicted == randomTrainY).sum()
+            print('Accuracy of the network on the random training docs: %.1f %%' % (
+                100.0 * correct / predicted.size()[0]))
+
 
             output = net(Variable(randomTestX))
             loss = criterion(output, Variable(randomTestY))
@@ -114,4 +125,4 @@ for epoch in range(100):
 
             if 100.0 * correct / predicted.size()[0] > best:
                 best = 100.0 * correct / predicted.size()[0]
-            print('Best Accuracy: %.1f %%' % (best))
+            print('Best test Accuracy: %.1f %%' % (best))
