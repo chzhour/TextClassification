@@ -21,6 +21,7 @@ def getData():
         line = line.strip('\n').split(',')
         trainY[count] = int(line[0])
         trainX[count,:] = [(float(x)) for x in line[1:]]
+        #trainX[count,:] /= trainX[count,:].sum() #normalization, bad
         count += 1
     print(count)
     infile.close()
@@ -31,6 +32,7 @@ def getData():
         line = line.strip('\n').split(',')
         testY[count] = int(line[0])
         testX[count,:] = [(float(x)) for x in line[1:]]
+        #testX[count,:] /= testX[count,:].sum() ##normalization, bad
         count += 1
     print(count)
     infile.close()
@@ -44,15 +46,13 @@ def getData():
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(2000, 209, bias=True)
-        self.fc2 = nn.Linear(209, 100)
-        self.fc3 = nn.Linear(100, 20)
+        self.fc1 = nn.Linear(2000, 100, bias=True)
+        self.fc2 = nn.Linear(100, 20)
 
     def forward(self, x):
         x = x.view(x.size()[0], -1)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc2(x)
         return x
 
     def applyMask(self, mask):
@@ -73,7 +73,7 @@ randomTrainX = torch.from_numpy(trainX[randomTrainIdx])
 randomTrainY = torch.from_numpy(trainY[randomTrainIdx])
 
 
-mask = torch.from_numpy( sio.loadmat('mask_commonest2000_soft_cond_PEM_209hid_800.mat')['mask'].astype(np.float32).T )
+mask = torch.from_numpy( sio.loadmat('mask_commonest2000_soft_cond_PEM_565hid_400.mat')['mask'].astype(np.float32).T )
 
 net = Net()
 criterion = nn.CrossEntropyLoss()
@@ -98,7 +98,7 @@ for epoch in range(100):
         loss = criterion(output, batchY)
         loss.backward()
         optimizer.step()
-        net.applyMask(mask)############################################
+        #net.applyMask(mask)############################################
 
         # print statistics
         running_loss += loss.data[0]
